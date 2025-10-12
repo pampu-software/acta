@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: const Text('BugKit demo')),
+        appBar: AppBar(title: const Text('Test demo')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
