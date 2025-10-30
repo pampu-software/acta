@@ -67,7 +67,7 @@ Contributions and feature suggestions are welcome!*
 Add `acta` as a dependency in your `pubspec.yaml`:
 ```yaml
 dependencies:
-  acta: ^0.0.2
+  acta: ^latest
 ```
 
 ## Usage
