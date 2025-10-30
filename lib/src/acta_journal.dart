@@ -2,6 +2,7 @@ import 'dart:async';
 // import 'dart:isolate';
 import 'package:acta/acta.dart';
 import 'package:acta/src/model/defines.dart';
+import 'package:acta/src/model/events/capabilities.dart';
 import 'package:flutter/foundation.dart';
 
 /// Central event and error journal for Acta.
@@ -139,11 +140,11 @@ class ActaJournal {
     required Event event,
     Map<String, dynamic>? meta,
   }) async {
-    if (event.severity.index < _options.minSeverity.index) return;
+    if (event.shouldReport(_options.minSeverity.index)) return;
     event
       ..metadata = {..._globalContext, ...?meta}
       ..breadcrumbs = List<Map<String, dynamic>>.from(_breadcrumbs);
-    event.calculateFingerprint();
+    event.preloadEvent();
 
     final maybe = await Future.value(_beforeSend?.call(event) ?? event);
     if (maybe == null) return;

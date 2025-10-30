@@ -1,6 +1,6 @@
 name: acta
 description: "A tool for application management that captures events and errors in a structured and extensible way."
-version: 0.0.3
+version: 0.0.4
 
 environment:
   sdk: ^3.7.2

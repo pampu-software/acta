@@ -1,11 +1,14 @@
 import 'package:acta/src/model/events/error_event.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('event ...', () {
     final event = ErrorEvent(message: 'message')..calculateFingerprint();
     var schema = event.toJson();
-    print(schema);
+    if (kDebugMode) {
+      print(schema);
+    }
   });
 }
 // {

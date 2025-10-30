@@ -2,8 +2,6 @@ import 'package:acta/acta.dart';
 import 'package:flutter/material.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   ActaJournal.initialize(
     reporters: [
       ConsoleReporter(),
@@ -19,7 +17,10 @@ void main() async {
     beforeSend: (report) {
       return report;
     },
-    appRunner: () => runApp(const MyApp()),
+    appRunner: () {
+      WidgetsFlutterBinding.ensureInitialized();
+      runApp(const MyApp());
+    },
   );
 }
 

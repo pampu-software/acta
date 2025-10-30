@@ -1,4 +1,5 @@
 import 'package:acta/acta.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -32,9 +33,13 @@ class ElasticsearchReporter implements Reporter {
       body: event.toJson(),
     );
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      print("Saved to Elasticsearch: ${response.body}");
+      if (kDebugMode) {
+        print("Saved to Elasticsearch: ${response.body}");
+      }
     } else {
-      print("Failed to save: ${response.statusCode} ${response.body}");
+      if (kDebugMode) {
+        print("Failed to save: ${response.statusCode} ${response.body}");
+      }
     }
   }
 }

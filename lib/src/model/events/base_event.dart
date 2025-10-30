@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:acta/src/model/events/capabilities.dart';
 import 'package:acta/src/model/events/event.dart';
 import 'package:acta/src/model/severity.dart';
 
@@ -13,7 +14,7 @@ import 'package:acta/src/model/severity.dart';
 /// - [breadcrumbs]: Optional list of contextual actions or states leading up to the event.
 /// - [timestamp]: When the event occurred.
 /// - [fingerPrint]: Unique identifier for the event, useful for grouping or deduplication.
-class BaseEvent implements Event {
+class BaseEvent implements Event, SeverityAware, Fingerprintable {
   late String fingerPrint;
   final String message;
   final String? tag;
@@ -34,6 +35,11 @@ class BaseEvent implements Event {
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now(),
        breadcrumbs = breadcrumbs ?? [];
+  @override
+  bool shouldReport(int index) {
+    if (severity.index < index) return true;
+    return false;
+  }
 
   @override
   void calculateFingerprint() {

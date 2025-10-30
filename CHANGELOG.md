@@ -1,3 +1,8 @@
+## 0.0.4
+
+### Changes
+- Fixes on base event for extension
+
 ## 0.0.3
 
 ### Changes
