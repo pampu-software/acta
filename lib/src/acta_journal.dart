@@ -1,8 +1,6 @@
 import 'dart:async';
 // import 'dart:isolate';
 import 'package:acta/acta.dart';
-import 'package:acta/src/model/defines.dart';
-import 'package:acta/src/model/events/capabilities.dart';
 import 'package:flutter/foundation.dart';
 
 /// Central event and error journal for Acta.
@@ -17,7 +15,7 @@ import 'package:flutter/foundation.dart';
 ///   - Use [setContext], [setContextKey], and [addBreadcrumb] to enrich event data.
 class ActaJournal {
   /// List of active reporters to send events to.
-  static final List<Reporter> _reporters = [];
+  static final List<ReporterFactory> _reporters = [];
 
   /// Current handler options (controls error capture and filtering).
   static late HandlerOptions _options;
@@ -45,7 +43,7 @@ class ActaJournal {
   /// - [zoneSpecification]: Optional custom zone specification for async error capture.
   static void initialize({
     required void Function() appRunner,
-    required List<Reporter> reporters,
+    required List<ReporterFactory> reporters,
     HandlerOptions options = const HandlerOptions(),
     BeforeSend? beforeSend,
     OnCaptured? onCaptured,
@@ -149,7 +147,8 @@ class ActaJournal {
     final maybe = await Future.value(_beforeSend?.call(event) ?? event);
     if (maybe == null) return;
 
-    for (final r in _reporters) {
+    for (final entry in _reporters) {
+      final r = entry.instance;
       try {
         _reportEventMethod(r, maybe);
         // Pass only serializable data
