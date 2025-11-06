@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:acta/src/model/events/capabilities.dart';
-import 'package:acta/src/model/events/event.dart';
-import 'package:acta/src/model/severity.dart';
+import 'package:acta/src/helpers/capabilities.dart';
+import 'package:acta/src/events/event.dart';
+import 'package:acta/src/helpers/severity.dart';
 
 /// Base implementation of [Event].
 ///

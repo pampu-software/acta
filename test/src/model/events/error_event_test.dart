@@ -1,4 +1,4 @@
-import 'package:acta/src/model/events/error_event.dart';
+import 'package:acta/src/events/events_impl/error_event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 

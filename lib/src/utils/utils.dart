@@ -23,3 +23,8 @@ int simpleHash(String input) {
   }
   return hash;
 }
+
+int hashNative() {
+  //TODO hash native
+  return 0;
+}

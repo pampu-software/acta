@@ -1,5 +1,5 @@
-import 'package:acta/src/model/events/base_event.dart';
-import 'package:acta/src/model/severity.dart';
+import 'package:acta/src/events/events_impl/base_event.dart';
+import 'package:acta/src/helpers/severity.dart';
 import 'package:acta/src/utils/utils.dart';
 
 ///Implementation of ErrorEvent extends [BaseEvent]
