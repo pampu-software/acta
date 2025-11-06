@@ -1,5 +1,4 @@
 import 'package:acta/acta.dart';
-import 'package:acta/src/reporters/reporter_factory.dart';
 import 'package:example/custom_report.dart';
 import 'package:example/screen.dart';
 import 'package:flutter/material.dart';
