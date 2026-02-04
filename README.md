@@ -11,7 +11,7 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
 
-![Image](assets/image100.png)
+![Image](assets/image250.png)
 
 # Acta
 A tool for application management that captures events and errors in a structured and extensible way.
