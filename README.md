@@ -11,6 +11,8 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
 
+![Preview do package](assets/preview.png)
+
 # Acta
 A tool for application management that captures events and errors in a structured and extensible way.
 

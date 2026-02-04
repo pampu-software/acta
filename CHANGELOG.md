@@ -1,3 +1,8 @@
+## 0.0.5
+
+### Changes
+- Introduced lazy loading to fix issues that required deferred initialization.
+
 ## 0.0.4
 
 ### Changes
