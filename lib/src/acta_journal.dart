@@ -1,7 +1,7 @@
 import 'dart:async';
-// import 'dart:isolate';
 import 'package:acta/acta.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Central event and error journal for Acta.
 ///
@@ -32,6 +32,23 @@ class ActaJournal {
   /// In-memory list of breadcrumbs (recent app actions).
   static final List<Map<String, dynamic>> _breadcrumbs = [];
 
+  /// Background event processing queue.
+  static final StreamController<_QueuedEvent> _eventController =
+      StreamController<_QueuedEvent>();
+
+  /// Future representing the background worker's life.
+  static Future<void>? _workerFuture;
+
+  /// Resets the journal for testing purposes.
+  @visibleForTesting
+  static void reset() {
+    _reporters.clear();
+    _globalContext = {};
+    _breadcrumbs.clear();
+    _beforeSend = null;
+    _onCaptured = null;
+  }
+
   /// Initializes the journal, sets up error capturing, and runs the app.
   ///
   /// - [appRunner]: Function to run the app (usually runApp).
@@ -50,6 +67,7 @@ class ActaJournal {
     Map<String, dynamic>? initialContext,
     ZoneSpecification? zoneSpecification,
   }) {
+    _ensureWorkerRunning();
     _reporters
       ..clear()
       ..addAll(reporters);
@@ -111,6 +129,20 @@ class ActaJournal {
     _globalContext[key] = value;
   }
 
+  /// Flushes all pending events in the queue.
+  ///
+  /// Returns a [Future] that completes when all currently queued events
+  /// have been processed by the background worker.
+  static Future<void> flush() async {
+    final completer = Completer<void>();
+    // We send a special event that just completes when reached
+    _eventController.add(_QueuedEvent(
+      _FlushEvent(),
+      completer,
+    ));
+    return completer.future;
+  }
+
   /// Adds a breadcrumb (recent action or state) to the in-memory list.
   /// Keeps only the last [maxBreadcrumbs] items.
   static void addBreadcrumb(String message, {Map<String, dynamic>? data}) {
@@ -131,79 +163,102 @@ class ActaJournal {
   /// Reports an [Event] to all configured reporters.
   ///
   /// - Merges global context and breadcrumbs into the event.
-  /// - Applies [beforeSend] hook (can mutate or drop the event).
-  /// - Sends to all reporters (fan-out).
-  /// - Calls [onCaptured] callback after reporting.
+  /// - Queues the event for background processing.
+  /// - Returns a [Future] that completes when the event has been processed.
   static Future<void> report({
     required Event event,
     Map<String, dynamic>? meta,
-  }) async {
-    if (event.shouldReport(_options.minSeverity.index)) return;
+  }) {
+    if (event.shouldReport(_options.minSeverity.index)) return Future.value();
+
+    // Capture state immediately to ensure accuracy
     event
       ..metadata = {..._globalContext, ...?meta}
       ..breadcrumbs = List<Map<String, dynamic>>.from(_breadcrumbs);
+
+    // Preload event (calculate fingerprint, etc.) before queuing to ensure
+    // we capture the correct execution context (e.g., stack traces).
     event.preloadEvent();
 
-    final maybe = await Future.value(_beforeSend?.call(event) ?? event);
-    if (maybe == null) return;
+    _ensureWorkerRunning();
 
-    for (final entry in _reporters) {
-      final r = entry.instance;
+    final completer = Completer<void>();
+    _eventController.add(_QueuedEvent(event, completer));
+    return completer.future;
+  }
+
+  /// Ensures the background worker is running.
+  static void _ensureWorkerRunning() {
+    _workerFuture ??= _runWorker();
+  }
+
+  /// Internal worker that processes queued events.
+  static Future<void> _runWorker() async {
+    await for (final queuedEvent in _eventController.stream) {
       try {
-        _reportEventMethod(r, maybe);
-        // Pass only serializable data
-        // ========================================================================
-        // await compute(_isolateEntry, {
-        //   'reporterType': r.runtimeType.toString(),
-        //   'event': maybe.toJson(), // <- you need toJson()
-        // });
-        // ========================================================================
-        // final receivePort = ReceivePort();
-        // await Isolate.spawn(_isolateWorker, {
-        //   'sendPort': receivePort.sendPort,
-        //   'reporterType': r.runtimeType.toString(),
-        //   'event': maybe.toJson(), // <- again must be serializable
-        // });
-        // // optional: wait for completion
-        // await for (var message in receivePort) {
-        //   if (message == 'done') {
-        //     receivePort.close();
-        //     break;
-        //   }
-        // }
-        // ========================================================================
+        if (kIsWeb) {
+          await _processEvent(queuedEvent);
+        } else {
+          // Attempt to use SchedulerBinding for non-blocking processing
+          final scheduler = SchedulerBinding.instance;
+          // ignore: unnecessary_null_comparison
+          if (scheduler != null) {
+            await scheduler.scheduleTask(
+              () => _processEvent(queuedEvent),
+              Priority.idle,
+            );
+          } else {
+            // Fallback for non-Flutter environments (e.g., pure Dart tests)
+            await Future.microtask(() => _processEvent(queuedEvent));
+          }
+        }
       } catch (e, s) {
-        debugPrint('[ACTA] reporter ${r.runtimeType} failed: $e\n$s');
+        debugPrint('[ACTA] Background worker error: $e\n$s');
+        if (!queuedEvent.completer.isCompleted) {
+          queuedEvent.completer.complete();
+        }
       }
     }
-    _onCaptured?.call(maybe);
   }
 
-  /// Internal helper to report an event to a single reporter.
-  static void _reportEventMethod(Reporter r, Event event) async {
+  /// Internal helper to process a single queued event.
+  static Future<void> _processEvent(_QueuedEvent queued) async {
+    final event = queued.event;
+    if (event is _FlushEvent) {
+      queued.completer.complete();
+      return;
+    }
+
     try {
-      await r.report(event);
-    } catch (e, s) {
-      //TODO Safe Fallback reporter
-      debugPrint('[ACTA] reporter ${r.runtimeType} failed: $e\n$s');
+      Event? maybe = event;
+      if (_beforeSend != null) {
+        maybe = await _beforeSend!(event);
+      }
+      if (maybe == null) return;
+
+      for (final entry in _reporters) {
+        final r = entry.instance;
+        try {
+          await r.report(maybe);
+        } catch (e, s) {
+          debugPrint('[ACTA] reporter ${r.runtimeType} failed: $e\n$s');
+        }
+      }
+      _onCaptured?.call(maybe);
+    } finally {
+      if (!queued.completer.isCompleted) {
+        queued.completer.complete();
+      }
     }
   }
+}
 
-  //  TODO future improvments
-  // static Future<void> _isolateEntry(Map<String, dynamic> args) async {
-  //   final String reporterType = args['reporterType'];
-  //   final event = Event.fromJson(args['event']); // <- you need fromJson()
-  //   // Recreate reporter based on type
-  //   final Reporter r = Reporter.create(reporterType);
-  //   await _reportEventMethod(r, event);
-  // }
+/// Internal event used to signal a flush.
+class _FlushEvent extends Event {}
 
-  // static Future<void> _isolateWorker(Map<String, dynamic> args) async {
-  //   final sendPort = args['sendPort'] as SendPort;
-  //   final String reporterType = args['reporterType'];
-  //   final event = Event.fromJson(args['event']);
-  //   final Reporter r = Reporter.create(reporterType);
-  //   await _reportEventMethod(r, event);
-  //   sendPort.send('done');
-  // }
+/// Internal wrapper for queued events.
+class _QueuedEvent {
+  final Event event;
+  final Completer<void> completer;
+  _QueuedEvent(this.event, this.completer);
 }
