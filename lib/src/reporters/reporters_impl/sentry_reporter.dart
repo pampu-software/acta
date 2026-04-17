@@ -6,20 +6,12 @@
 //   SentryCrashReporter();
 
 //   SentryLevel _mapLevel(Severity l) {
-//     switch (l) {
-//       // case Severity.debug:
-//       //   return SentryLevel.debug;
-//       case Severity.info:
-//         return SentryLevel.info;
-//       case Severity.warning:
-//         return SentryLevel.warning;
-//       // case Severity.error:
-//       //   return SentryLevel.error;
-//       // case Severity.fatal:
-//       //   return SentryLevel.fatal;
-//       default:
-//         return SentryLevel.error;
-//     }
+//     if (l == Severity.debug) return SentryLevel.debug;
+//     if (l == Severity.info) return SentryLevel.info;
+//     if (l == Severity.warning) return SentryLevel.warning;
+//     if (l == Severity.error) return SentryLevel.error;
+//     if (l == Severity.fatal) return SentryLevel.fatal;
+//     return SentryLevel.error;
 //   }
 
 //   @override

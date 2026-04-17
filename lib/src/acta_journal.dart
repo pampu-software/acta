@@ -138,7 +138,7 @@ class ActaJournal {
     required Event event,
     Map<String, dynamic>? meta,
   }) async {
-    if (event.shouldReport(_options.minSeverity.index)) return;
+    if (!event.shouldReport(_options.minSeverity)) return;
     event
       ..metadata = {..._globalContext, ...?meta}
       ..breadcrumbs = List<Map<String, dynamic>>.from(_breadcrumbs);
