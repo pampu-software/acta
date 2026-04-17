@@ -19,27 +19,27 @@ class ErrorEvent extends BaseEvent {
 
   ErrorEvent({
     required super.message,
-    super.severity,
+    super.severity = Severity.error,
     super.metadata,
     super.tag,
     super.breadcrumbs,
     super.timestamp,
+    super.fingerPrint,
     this.exception,
     this.stackTrace,
   });
 
   @override
   void calculateFingerprint() =>
-      super.fingerPrint = generateFingerprint(exception, stackTrace);
+      fingerPrint = generateFingerprint(exception, stackTrace);
 
   @override
   Map<String, dynamic> toMap() {
-    final map = super.toMap();
-    map.addAll({
+    return {
+      ...super.toMap(),
       'exception': exception.toString(),
       'stackTrace': stackTrace.toString(),
-    });
-    return map;
+    };
   }
 
   factory ErrorEvent.fromMap(Map<String, dynamic> map) {
@@ -59,17 +59,18 @@ class ErrorEvent extends BaseEvent {
           map['timestamp'] != null
               ? DateTime.fromMillisecondsSinceEpoch(map['timestamp'] as int)
               : null,
+      fingerPrint: map['fingerPrint'] as String?,
       exception: map['exception'],
       stackTrace:
           map['stackTrace'] != null
               ? StackTrace.fromString(map['stackTrace'] as String)
               : null,
-    )..fingerPrint = map['fingerPrint'] as String;
+    );
   }
 
   @override
   String toString() =>
-      'ErrorEvent(${super.getContentToString()} exception: $exception, stackTrace: $stackTrace)';
+      'ErrorEvent(${getContentToString()} exception: $exception, stackTrace: $stackTrace)';
 
   @override
   String prettyPrinter() {
