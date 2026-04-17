@@ -1,5 +1,4 @@
 import 'dart:async';
-// import 'dart:isolate';
 import 'package:acta/acta.dart';
 import 'package:flutter/foundation.dart';
 
@@ -41,6 +40,7 @@ class ActaJournal {
   /// - [onCaptured]: Optional callback after event is captured.
   /// - [initialContext]: Initial global context for all events.
   /// - [zoneSpecification]: Optional custom zone specification for async error capture.
+  /// - [integrations]: List of integrations to initialize (e.g. FlutterIntegration).
   static void initialize({
     required void Function() appRunner,
     required List<ReporterFactory> reporters,
@@ -49,6 +49,7 @@ class ActaJournal {
     OnCaptured? onCaptured,
     Map<String, dynamic>? initialContext,
     ZoneSpecification? zoneSpecification,
+    List<ActaIntegration> integrations = const [],
   }) {
     _reporters
       ..clear()
@@ -58,33 +59,25 @@ class ActaJournal {
     _onCaptured = onCaptured;
     _globalContext = {...?initialContext};
 
-    if (_options.logFlutterErrors) {
-      final prev = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails details) {
-        report(
-          event: ErrorEvent(
-            message: "FlutterError caught",
-            exception: details.exception,
-            stackTrace: details.stack,
-            severity: Severity.critical,
-          ),
-        );
-        prev?.call(details);
-      };
+    // Initialize integrations
+    // This allows pluggable extensions like BlocObserver or Firebase
+    for (final integration in integrations) {
+      integration();
     }
-    if (_options.logPlatformErrors) {
-      PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-        report(
-          event: ErrorEvent(
-            message: "Platform error caught",
-            exception: error,
-            stackTrace: stack,
-            severity: Severity.critical,
-          ),
-        );
-        return true;
-      };
+
+    // Legacy support (to be deprecated in favor of explicit integrations)
+    // If the user hasn't provided FlutterIntegration but requested logging, we do it here.
+    if (_options.logFlutterErrors &&
+        !integrations.any((i) => i is FlutterIntegration)) {
+      FlutterIntegration().setupFlutterErrorCapture();
     }
+    if (_options.logPlatformErrors &&
+        !integrations.any((i) => i is FlutterIntegration)) {
+      FlutterIntegration().setupPlatformErrorCapture();
+    }
+
+    // CRITICAL: runZonedGuarded is maintained here to capture asynchronous errors
+    // that escape the standard Flutter and Platform error handlers.
     if (_options.catchAsyncErrors) {
       runZonedGuarded(appRunner, (Object error, StackTrace stack) {
         report(
@@ -151,27 +144,6 @@ class ActaJournal {
       final r = entry.instance;
       try {
         _reportEventMethod(r, maybe);
-        // Pass only serializable data
-        // ========================================================================
-        // await compute(_isolateEntry, {
-        //   'reporterType': r.runtimeType.toString(),
-        //   'event': maybe.toJson(), // <- you need toJson()
-        // });
-        // ========================================================================
-        // final receivePort = ReceivePort();
-        // await Isolate.spawn(_isolateWorker, {
-        //   'sendPort': receivePort.sendPort,
-        //   'reporterType': r.runtimeType.toString(),
-        //   'event': maybe.toJson(), // <- again must be serializable
-        // });
-        // // optional: wait for completion
-        // await for (var message in receivePort) {
-        //   if (message == 'done') {
-        //     receivePort.close();
-        //     break;
-        //   }
-        // }
-        // ========================================================================
       } catch (e, s) {
         debugPrint('[ACTA] reporter ${r.runtimeType} failed: $e\n$s');
       }
@@ -188,22 +160,4 @@ class ActaJournal {
       debugPrint('[ACTA] reporter ${r.runtimeType} failed: $e\n$s');
     }
   }
-
-  //  TODO future improvments
-  // static Future<void> _isolateEntry(Map<String, dynamic> args) async {
-  //   final String reporterType = args['reporterType'];
-  //   final event = Event.fromJson(args['event']); // <- you need fromJson()
-  //   // Recreate reporter based on type
-  //   final Reporter r = Reporter.create(reporterType);
-  //   await _reportEventMethod(r, event);
-  // }
-
-  // static Future<void> _isolateWorker(Map<String, dynamic> args) async {
-  //   final sendPort = args['sendPort'] as SendPort;
-  //   final String reporterType = args['reporterType'];
-  //   final event = Event.fromJson(args['event']);
-  //   final Reporter r = Reporter.create(reporterType);
-  //   await _reportEventMethod(r, event);
-  //   sendPort.send('done');
-  // }
 }
