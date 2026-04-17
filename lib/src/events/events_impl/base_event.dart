@@ -36,8 +36,8 @@ class BaseEvent implements Event, SeverityAware, Fingerprintable {
   }) : timestamp = timestamp ?? DateTime.now(),
        breadcrumbs = breadcrumbs ?? [];
   @override
-  bool shouldReport(int index) {
-    if (severity.index < index) return true;
+  bool shouldReport(Severity minSeverity) {
+    if (severity >= minSeverity) return true;
     return false;
   }
 

@@ -10,7 +10,7 @@
 //   @override
 //   Future<void> report(Event r) async {
 //     // attach useful keys
-//     await crashlytics.setCustomKey('level', r.severity.name);
+//     await crashlytics.setCustomKey('level', r.severity.toMap());
 //     await crashlytics.setCustomKey('timestamp', r.timestamp.toIso8601String());
 //     if (r.metadata != null) {
 //       for (final entry in r.metadata!.entries) {

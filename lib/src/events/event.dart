@@ -7,7 +7,7 @@ abstract class Event {
   Map<String, dynamic>? metadata;
   List<Map<String, dynamic>>? breadcrumbs;
 
-  bool shouldReport(int index) => true;
+  bool shouldReport(Severity minSeverity) => true;
 
   Map<String, dynamic> toMap() => {'': ''};
   String toJson() => jsonEncode(toMap());
