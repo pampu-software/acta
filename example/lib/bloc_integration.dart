@@ -13,7 +13,7 @@ class ActaBlocObserver extends BlocObserver {
         message: 'Bloc error in ${bloc.runtimeType}',
         exception: error,
         stackTrace: stackTrace,
-        severity: Severity.critical, // Severity.error was undefined
+        severity: Severity.critical, // Using critical as error level
         metadata: {
           'bloc': bloc.runtimeType.toString(),
         },

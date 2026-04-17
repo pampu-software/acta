@@ -60,11 +60,13 @@ class ActaJournal {
     _globalContext = {...?initialContext};
 
     // Initialize integrations
+    // This allows pluggable extensions like BlocObserver or Firebase
     for (final integration in integrations) {
       integration();
     }
 
-    // Legacy support (to be deprecated)
+    // Legacy support (to be deprecated in favor of explicit integrations)
+    // If the user hasn't provided FlutterIntegration but requested logging, we do it here.
     if (_options.logFlutterErrors &&
         !integrations.any((i) => i is FlutterIntegration)) {
       FlutterIntegration().setupFlutterErrorCapture();
@@ -74,6 +76,8 @@ class ActaJournal {
       FlutterIntegration().setupPlatformErrorCapture();
     }
 
+    // CRITICAL: runZonedGuarded is maintained here to capture asynchronous errors
+    // that escape the standard Flutter and Platform error handlers.
     if (_options.catchAsyncErrors) {
       runZonedGuarded(appRunner, (Object error, StackTrace stack) {
         report(
