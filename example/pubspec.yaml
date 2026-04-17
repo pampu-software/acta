@@ -11,3 +11,6 @@ dependencies:
     sdk: flutter
   acta:
     path: ../   # aponta pro package local
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  bloc: ^8.1.0
